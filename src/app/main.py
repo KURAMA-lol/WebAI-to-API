@@ -1,5 +1,6 @@
 # src/app/main.py
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -24,6 +25,7 @@ import os
 import signal
 import threading
 import asyncio
+import hmac
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -102,6 +104,34 @@ OPENAPI_TAGS = [
 ]
 
 app = FastAPI(lifespan=lifespan, openapi_tags=OPENAPI_TAGS)
+
+
+@app.middleware("http")
+async def api_key_middleware(request, call_next):
+    """Require a Bearer API key for every route except health probes."""
+    if request.url.path in {"/health", "/ready"}:
+        return await call_next(request)
+
+    expected_key = os.environ.get("WEB_API_KEY", "").strip()
+    if not expected_key:
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "API authentication is not configured"},
+        )
+
+    scheme, _, supplied_key = request.headers.get("authorization", "").partition(" ")
+    if (
+        scheme.lower() != "bearer"
+        or not supplied_key.strip()
+        or not hmac.compare_digest(supplied_key.strip(), expected_key)
+    ):
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Unauthorized"},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return await call_next(request)
 
 app.mount(
     "/ui/static",
