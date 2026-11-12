@@ -91,6 +91,15 @@ def _apply_environment_overrides(config: configparser.ConfigParser) -> None:
             "true" if env_headless.strip().lower() in ("1", "true", "yes", "on") else "false"
         )
 
+    # Allow cloud hosts to inject Gemini WebAPI cookies without a config file.
+    gemini_cookie = os.environ.get("WEBAPI_GEMINI_1PSID")
+    if gemini_cookie is not None:
+        config["Gemini"]["__Secure-1PSID"] = gemini_cookie
+
+    gemini_cookie_ts = os.environ.get("WEBAPI_GEMINI_1PSIDTS")
+    if gemini_cookie_ts is not None:
+        config["Gemini"]["__Secure-1PSIDTS"] = gemini_cookie_ts
+
 
 def _validate_configparser_boolean(
     config: configparser.ConfigParser, section: str, option: str
