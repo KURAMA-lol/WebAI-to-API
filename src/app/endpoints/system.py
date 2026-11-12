@@ -15,8 +15,9 @@ _FAVICON_PATH = Path(__file__).resolve().parents[1] / "static" / "ui" / "favicon
 async def favicon():
     return FileResponse(str(_FAVICON_PATH), media_type="image/x-icon")
 
-@router.get(
+@router.api_route(
     "/health",
+    methods=["GET", "HEAD"],
     summary="Liveness Probe",
     description=(
         "Standard liveness check. Returns 200 if the application process is alive and "
@@ -35,8 +36,9 @@ async def health():
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
     return Response(status_code=status.HTTP_200_OK)
 
-@router.get(
+@router.api_route(
     "/ready",
+    methods=["GET", "HEAD"],
     summary="Readiness Probe",
     description=(
         "Standard readiness check. Returns 200 only if the structural runtime is fully "
