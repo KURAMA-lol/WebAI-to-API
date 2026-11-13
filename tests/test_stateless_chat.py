@@ -5,6 +5,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
+from app.identity import append_default_identity
 import app.services.gemini_client as gemini_client_module
 
 
@@ -124,7 +125,7 @@ async def test_stateless_models_are_accepted_by_stateless_chat_validation(
     assert response.status_code == 200
     client.resolve_model.assert_called_once_with(model_id)
     client.generate_content.assert_awaited_once_with(
-        "User: Hello",
+        append_default_identity("User: Hello"),
         model_id,
         files=None,
         gem=None,
@@ -192,7 +193,7 @@ async def test_stateless_chat_uses_shared_temporary_execution_without_persistenc
     assert "conversation_id" not in data
     assert "reused_conversation" not in data
     client.generate_content.assert_awaited_once_with(
-        "User: Hello",
+        append_default_identity("User: Hello"),
         "gemini-3-flash",
         files=None,
         gem=None,
@@ -256,6 +257,7 @@ async def test_stateless_chat_transforms_full_history_and_tool_loop(mocker, inst
     assert 'Assistant tool call [call-1] get_weather: {"location":"SF"}' in prompt
     assert "Tool result [call-1]: Sunny, 18C" in prompt
     assert "User: Summarize that." in prompt
+    assert prompt.endswith(append_default_identity(""))
     assert client.generate_content.await_args.kwargs["temporary"] is True
 
 
@@ -303,7 +305,7 @@ async def test_stateless_chat_accepts_available_slash_model(
     assert response.status_code == 200
     client.resolve_model.assert_called_once_with(slash_model)
     client.generate_content.assert_awaited_once_with(
-        "User: Hello",
+        append_default_identity("User: Hello"),
         slash_model,
         files=None,
         gem=None,
@@ -443,7 +445,7 @@ async def test_stateless_chat_streams_sse_and_terminates_with_done(mocker, insta
     assert {chunk["model"] for chunk in chunks} == {"gemini-3-flash"}
     assert all("message" not in chunk["choices"][0] for chunk in chunks)
     client.generate_content_stream.assert_awaited_once_with(
-        "User: Hello",
+        append_default_identity("User: Hello"),
         "gemini-3-flash",
         files=None,
         gem=None,
@@ -639,7 +641,8 @@ async def test_temporary_and_stateless_chat_return_openai_tool_calls(
         assert "index" not in tool_call
     prompt = client.generate_content.await_args.args[0]
     assert "You have access to the following tools." in prompt
-    assert prompt.endswith("User: Weather?")
+    assert prompt.startswith("User: Weather?")
+    assert prompt.endswith(append_default_identity(""))
     assert client.generate_content.await_args.args[1] == "gemini-3-flash"
     assert client.generate_content.await_args.kwargs == {
         "files": None,
@@ -668,7 +671,7 @@ async def test_temporary_chat_preserves_gemini_model_prefix_compatibility(
     assert response.status_code == 200
     client.resolve_model.assert_called_once_with("gemini-3-flash")
     client.generate_content.assert_awaited_once_with(
-        "User: Hello",
+        append_default_identity("User: Hello"),
         "gemini-3-flash",
         files=None,
         gem=None,

@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Any, AsyncGenerator, List
 from app.config import resolve_conversation_snapshot_db
 from app.logger import logger
+from app.identity import append_default_identity
 from app.services.providers.base_repository import ConversationSnapshot, IConversationRepository, ProviderCapability
 from app.services.providers.exceptions import (
     ConversationInUseError,
@@ -47,7 +48,7 @@ class SessionManager:
                 self.last_accessed = time.time() # Update at start
                 self._ensure_session(model, gem)
                 response = await self.session.send_message(
-                    prompt=message,
+                    prompt=append_default_identity(message),
                     files=images,
                     temporary=temporary,
                 )
@@ -81,7 +82,7 @@ class SessionManager:
                 try:
                     async with asyncio.timeout(MAX_GENERATION_DURATION):
                         async for chunk in self.session.send_message_stream(
-                            prompt=message,
+                            prompt=append_default_identity(message),
                             files=images,
                             temporary=temporary,
                         ):
@@ -769,4 +770,5 @@ def transform_messages(messages: list[dict], tools_prompt: str = "") -> list[str
             tool_call_id = msg.get("tool_call_id", "")
             conversation_parts.append(f"Tool result [{tool_call_id}]: {content}")
     
+    conversation_parts.append(append_default_identity(""))
     return conversation_parts

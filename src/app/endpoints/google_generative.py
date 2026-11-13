@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from app.logger import logger
+from app.identity import append_default_identity
 from app.schemas.request import GoogleGenerativeRequest
 from app.services.gemini_client import (
     acquire_current_gemini_lease,
@@ -139,7 +140,7 @@ async def google_generative_generate(model_path: str, request: GoogleGenerativeR
 
         # Build conversation text
         prompt_parts.append(_build_prompt_from_contents(request.contents))
-        prompt = "\n\n".join(p for p in prompt_parts if p)
+        prompt = append_default_identity("\n\n".join(p for p in prompt_parts if p))
 
         if is_streaming:
             async def sse_generator():

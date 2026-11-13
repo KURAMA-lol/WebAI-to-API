@@ -4,6 +4,7 @@ import json
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from app.logger import logger
+from app.identity import append_default_identity
 from app.schemas.request import GeminiRequest
 from app.services.gemini_client import (
     acquire_current_gemini_lease,
@@ -34,7 +35,7 @@ async def gemini_generate(request: GeminiRequest):
                 try:
                     lease = acquire_current_gemini_lease()
                     gemini_client = lease.client
-                    async for chunk in await gemini_client.generate_content_stream(request.message, request.model, files=files, gem=request.gem):
+                    async for chunk in await gemini_client.generate_content_stream(append_default_identity(request.message), request.model, files=files, gem=request.gem):
                         if chunk.text_delta:
                             yield f"data: {json.dumps({'response': chunk.text_delta}, ensure_ascii=False)}\n\n"
                 except (asyncio.CancelledError, GeneratorExit):
@@ -64,7 +65,7 @@ async def gemini_generate(request: GeminiRequest):
             raise HTTPException(status_code=503, detail=str(e))
         async with lease:
             response = await lease.client.generate_content(
-                request.message,
+                append_default_identity(request.message),
                 request.model,
                 files=files,
                 gem=request.gem,

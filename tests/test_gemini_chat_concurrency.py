@@ -4,6 +4,7 @@ import pytest
 from types import SimpleNamespace
 from httpx import AsyncClient, ASGITransport
 from app.main import app
+from app.identity import append_default_identity
 from app.services.providers.gemini.session_manager import SessionRegistry, SessionManager
 import app.services.providers.gemini.session_manager as session_manager_module
 import app.services.providers.gemini.client as gemini_client_module
@@ -629,7 +630,7 @@ async def test_client_replacement_lazily_rebuilds_stale_session_with_metadata(mo
     assert new_session.geminiclient is client2
     assert new_session.metadata == old_session.metadata
     assert manager.session_generation == manager.client_generation == registry.client_generation
-    assert old_session.calls == [("User: first", None, False)]
+    assert old_session.calls == [(append_default_identity("User: first"), None, False)]
     assert new_session.calls == [("second", None, False)]
 
 
